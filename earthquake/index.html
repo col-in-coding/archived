@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Earthquakes</title>
+
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta charset="utf8" />
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+
+	<!-- jQuery library -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+
+	<!-- Latest compiled JavaScript -->
+	<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+
+	<style>
+		header{
+			color: #fff;
+			font-size: 250%;
+		}
+		#map{
+			margin-top: 15px;
+			height: 600px;
+		}
+		.container{
+			margin-top: 50px;
+		}
+		@media screen and (max-width: 480px){
+			#map{
+				margin-top: 15px;
+				height: 300px;
+			}
+			
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<header class='navbar navbar-inverse'>Earthquake Service</header>
+		<div class="col-lg-8">
+			<div class="form-inline">
+				City/Location: <input type="text" id="address" class="form-control"> 
+				<button id="submit" value="Geocode" type="button" class="btn btn-info">Search</button>
+			</div>
+			<div id="map"></div>
+		</div>
+		
+		<div class="col-lg-4">
+			<table id='top10' class="table table-striped">
+				<caption>Top 10 Largest Earthquakes of past 12 monthes</caption>
+				<tr>
+					<th>EQID</th><th>Date</th><th>Magnitude</th><th>Depth</th>
+				</tr>
+			</table>
+		</div>
+
+	</div>
+	
+	<script>
+		var minMagnitude=4;
+		var maxRows=10;
+
+		// initial the map
+	    function initMap() {
+	        var map = new google.maps.Map(document.getElementById('map'), {
+	        	zoom: 8,
+	        	center: {lat: 31, lng: 120}
+	        });
+	        var geocoder = new google.maps.Geocoder();
+
+		    search_top10(); //Search top10 earthquakes
+	      	
+	      	document.getElementById('submit').addEventListener('click', function() {
+		        geocodeAddress(geocoder, map); //Get the LatLng and show on the map
+		    });
+	    }
+
+	    /**
+	     * get the earthquakes info and show on the map
+	     * @param  {object} geocoder   [google map ]
+	     * @param  {object} resultsMap [description]
+	     */
+	    function geocodeAddress(geocoder, resultsMap) {
+			var info=null; // earthquake info	    	
+			var lat=null;
+			var lng=null;	    	
+	        var address = document.getElementById('address').value;
+	        geocoder.geocode({'address': address}, function(results, status) {
+		        if (status === google.maps.GeocoderStatus.OK) {
+		        	lat=results[0].geometry.location.lat();
+		        	lng=results[0].geometry.location.lng();
+					resultsMap.setCenter(results[0].geometry.location);
+
+		        	$.ajax({
+		        		url: 'http://api.geonames.org/earthquakesJSON',
+		        		type: 'GET',
+		        		dataType: 'json',
+		        		data: {north: lat+1, south: lat-1, east: lng+1, west: lng-1, minMagnitude: minMagnitude, maxRows: maxRows, username: 'hxli23333'},
+		        	})
+		        	.done(function(results) {
+		        		info=results;
+        				var markers=addMarker(resultsMap,info); //Add markers on the map
+		        	})
+		        	.fail(function() {
+		        		console.log("error");
+		        	})
+		        	.always(function() {
+		        		console.log("complete");
+		        	});
+	            } else {
+	            alert('Geocode was not successful for the following reason: ' + status);
+	          }
+	        });
+	    }
+
+	    /**
+	     * Add marker to the google map
+	     * @param {object} resultsMap [description]
+	     */
+	    function addMarker(resultsMap,info){
+	    	var markers = [];
+	    	var contentStrings = [];
+			var infowindows = [];
+
+	            // console.log(info.earthquakes);
+	            for (var i = 0; i < info.earthquakes.length; i++) {
+	            	// set the marker in the map
+	            	markers[i] = new google.maps.Marker({
+	            		map: resultsMap,
+	            		title: 'ID:'+info.earthquakes[i].eqid,
+	            		animation: google.maps.Animation.DROP,
+			            position: {lat: info.earthquakes[i].lat, lng: info.earthquakes[i].lng}
+		            });
+
+	            	contentStrings[i] = '<h3>Earthquake ID: '+info.earthquakes[i].eqid+'</h3>'+
+	            						'<p>Date Time: '+info.earthquakes[i].datetime+'<br />'+
+	            						'Magnitude: '+info.earthquakes[i].magnitude+'<br />'+
+	            						'Depth: '+info.earthquakes[i].depth+'</p>';
+		            infowindows[i] = new google.maps.InfoWindow({
+					    content: contentStrings[i]
+					});
+
+	            	markers[i].addListener('click', function() {
+	            		// console.log($(this)[0]);
+	            		// console.log(markers[0]);
+
+	            		for (var i = 0; i < markers.length; i++) {
+	            			if (markers[i]==$(this)[0]){
+			            		console.log(i);
+							    infowindows[i].open(resultsMap, markers[i]);	            			}
+	            		};
+
+					});
+	            };
+	            // console.log({lat: lat, lng: lng});
+	            // console.log(markers);
+	            // console.log(infowindows);
+	    }
+
+	    /**
+	     * Search the top 10 earthquake in the world for the past 12 monthes
+	     */
+	    function search_top10(){
+	    	var present_time = new Date();
+	    	console.log(present_time);
+	    	var utc = present_time.toJSON().slice(0,10);
+			console.log(utc);
+
+	    	$.ajax({
+        		url: 'http://api.geonames.org/earthquakesJSON',
+        		type: 'GET',
+        		dataType: 'json',
+        		data: {north: 90, south: -90, east: 180, west: -180, date: utc, minMagnitude: 7, maxRows: 100, username: 'hxli23333'},
+	    	})
+	    	.done(function(results) {
+	    		console.log(results);
+	    		var earthquakes = results.earthquakes;
+	    		var earthquake_date = null;
+	    		var one_year = 1000*60*60*24*365;
+	    		var diff = null;
+	    		var top = [];
+
+    			//console.log(earthquakes[0].datetime);
+    			//earthquake_date = new Date(earthquakes[0].datetime.replace(/ /g,'T'));
+    			//earthquake_date = new Date('2015-3-20');
+    			//console.log(earthquake_date);
+    			// diff = present_time-earthquake_date;
+    			// console.log(diff);
+
+	    		for (var i = 0; i < earthquakes.length; i++) {
+
+					earthquake_date = new Date(earthquakes[i].datetime.replace(/ /g,'T'));
+					
+					if (present_time-earthquake_date<one_year) {
+						top.push(earthquakes[i]);
+					};
+	    		};
+	    		
+	    		console.log(top);
+	    		
+	    		top.sort(compare_magnitude);
+				console.log(top);
+				addToTable(top);
+	    	})
+	    	.fail(function() {
+	    		console.log("error");
+	    	})
+	    	.always(function() {
+	    		console.log("complete");
+	    	});
+	    	
+	    }
+
+	    function compare_magnitude(first, second){
+	    	if (first.magnitude == second.magnitude) {
+	    		return 0;
+	    	}else if (first.magnitude > second.magnitude) {
+	    		return -1;
+	    	}else if (first.magnitude < second.magnitude) {
+	    		return 1;
+	    	}
+	    }
+
+	    function addToTable(items){
+	    	console.log(items);
+	    	for (var i = 0; i < 10; i++) {
+		    	$("table#top10").append('<tr><td>'+items[i].eqid+'</td><td>'+items[i].datetime+'</td><td>'+items[i].magnitude+'</td><td>'+items[i].depth+'</td></tr>');
+	    	};
+	    	// console.log(items);
+	    	// $("#top10").append('<tr><td>'+items.eqid+'</td><td>'+items.date+'</td><td>'+items.magnitude+'</td><td>'+items.depth+'</td></tr>');
+	    }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB8sl2vzM3lEOGrYzoDcC9bGHNo02uMneo&callback=initMap"
+    async defer></script>
+</body>
+</html>

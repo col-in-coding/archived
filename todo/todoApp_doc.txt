@@ -1,0 +1,30 @@
+Front End Pages
+	1. Login Page
+	2. Registration Page
+	3. Todo lists page
+	4. Admin Page
+
+Server End
+	1. Data input
+		a. user
+			first name, last name, email, password, salt, group
+		b. task
+			description, scheduled date, status, id
+	2. Data Storage
+		a. File system
+			i. JSON
+			ii. CSV
+		b. Relational Database system (MySQL)
+	3. Data Validation
+		a. Check the format
+		b. Verify the username and password
+
+Requirements:
+	1. All content except the login and registration pages will be secure (not accessible unless logged in).
+	2. Format check
+		username - email address
+		password - 6 to 12 characters, alpha numeric (at least 1 alpha and at least 1 numeric), special characters ($, _)
+	3. 
+
+Description:
+	1. The format check can be done in Front End by Javascript or in the Server End by PHP
